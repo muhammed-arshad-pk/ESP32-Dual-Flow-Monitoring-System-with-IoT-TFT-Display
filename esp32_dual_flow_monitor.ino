@@ -23,8 +23,8 @@
 #define BUTTON_MODE      33  // Button to change display mode
 
 // WiFi credentials
-const char* ssid = "iPhone";
-const char* password = "1111111111";
+const char* ssid = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
 
 unsigned long lastWiFiAttempt = 0;
 
@@ -71,7 +71,7 @@ const unsigned long debounceDelay = 500; // milliseconds
 const unsigned long thingSpeakInterval = 300000; // (in milliseconds - 1 second = 1000 millisecond) 5 minute update interval to ThingSpeak Cloud - Uncomment for Production
 unsigned long lastThingSpeakUpdate = 0;
 const char* thingspeakServer = "http://api.thingspeak.com";
-const char* thingSpeakWriteAPIKey = "WPFY9MS2R1GJJQGU"; // Replace with your channel's Write API Key
+const char* thingSpeakWriteAPIKey = "YOUR_THINGSPEAK_WRITE_API_KEY"; // Replace with your channel's Write API Key
 
 // --- TFT Display ---
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
