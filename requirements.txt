@@ -1,0 +1,11 @@
+
+Arduino IDE >= 2.0
+ESP32 Board Package
+
+Libraries:
+- Adafruit GFX Library
+- Adafruit ILI9341 Library
+- SD (Built-in)
+- SPI (Built-in)
+- WiFi (ESP32 Core)
+- HTTPClient (ESP32 Core)
