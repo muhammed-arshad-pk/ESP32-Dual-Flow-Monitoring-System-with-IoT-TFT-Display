@@ -80,3 +80,4 @@ Daily data volume: **~17,000+ samples/day per channel**
 const char* ssid = "YOUR_WIFI_NAME";
 const char* password = "YOUR_WIFI_PASSWORD";
 const char* thingSpeakWriteAPIKey = "YOUR_THINGSPEAK_WRITE_API_KEY";
+happy
