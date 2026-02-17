@@ -1,3 +1,6 @@
+
+//code for v1.2 TFT display 
+
 #include <SPI.h>
 #include <SD.h>
 #include <WiFi.h>

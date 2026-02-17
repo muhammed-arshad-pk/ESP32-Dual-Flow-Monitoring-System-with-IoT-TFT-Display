@@ -4,8 +4,10 @@ ESP32 Board Package
 
 Libraries:
 - Adafruit GFX Library
-- Adafruit ILI9341 Library
+- Adafruit ILI9341 Library (for TFT v1.2)    OR
+- Adafruit ST7789  Library (for TFT v1.1)
 - SD (Built-in)
 - SPI (Built-in)
 - WiFi (ESP32 Core)
 - HTTPClient (ESP32 Core)
+

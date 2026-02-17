@@ -1,46 +1,43 @@
+//code for v1.1 TFT display (Adafruit_ST7789.h)
+
 #include <SPI.h>
 #include <SD.h>
 #include <WiFi.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_ILI9341.h>
+#include <Adafruit_ST7789.h>    
 #include <HTTPClient.h>
 #include <Fonts/FreeSansBoldOblique24pt7b.h>
 
 // --- Pin Definitions ---
-#define SD_CS       4   // SD card chip select
-#define TFT_CS      5   // TFT chip select
-#define TFT_DC      16
-#define TFT_RST     17
+#define SD_CS        4    // SD card chip select
+#define TFT_CS       5    // TFT chip select
+#define TFT_DC       16
+#define TFT_RST      17
 
 // Flow sensor pins
-//#define SENSOR_INLET    13
-//#define SENSOR_OUTLET   12
-
-#define SENSOR_INLET    32
-#define SENSOR_OUTLET   35
+#define SENSOR_INLET     13
+#define SENSOR_OUTLET    12
 
 // Push button pin
-#define BUTTON_MODE      33  // Button to change display mode
+#define BUTTON_MODE      33   // Button to change display mode
 
 // WiFi credentials
-const char* ssid = "YOUR_WIFI_NAME";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* ssid = "iPhone";
+const char* password = "1111111111";
 
 unsigned long lastWiFiAttempt = 0;
-
 
 // Timing & calibration for flow sensors
 unsigned long currentMillis = 0;
 unsigned long previousMillis = 0;
-const int interval = 1000;         // Update interval: 1 second - 1000
-const float inletCalibrationFactor = 74.905;      // Calibration Factor for Inlet Flow Senosr in Pulses/ Litre
-const float outletCalibrationFactor = 74.905;      // Calibration Factor for Outlet Flow Senosr in Pulses/ Litre
+const int interval = 1000;      
+const float inletCalibrationFactor = 74.905;      
+const float outletCalibrationFactor = 74.905;      
 
 // Inlet variables
 volatile byte pulseCountInlet;
 byte pulse1SecInlet = 0;
 float flowRateInlet = 0.0;
-//unsigned int flowLitresInlet = 0;
 float flowLitresInlet = 0;
 float totalLitresInlet = 0.0;
 unsigned long totalPulseCountInlet = 0;
@@ -50,7 +47,6 @@ String lastPumpStatusInlet = "OFF";
 volatile byte pulseCountOutlet;
 byte pulse1SecOutlet = 0;
 float flowRateOutlet = 0.0;
-//unsigned int flowLitresOutlet = 0;
 float flowLitresOutlet = 0;
 float totalLitresOutlet = 0.0;
 unsigned long totalPulseCountOutlet = 0;
@@ -65,16 +61,14 @@ unsigned long lastDebounceDisplay = 0;
 unsigned long lastDebounceMode = 0;
 const unsigned long debounceDelay = 500; // milliseconds
 
-
 // ThingSpeak settings
-// const unsigned long thingSpeakInterval = 15000; // (in milliseconds - 1 second = 1000 millisecond) 15 second update interval to ThingSpeak Cloud - Uncomment for Test - Comment in Production
-const unsigned long thingSpeakInterval = 300000; // (in milliseconds - 1 second = 1000 millisecond) 5 minute update interval to ThingSpeak Cloud - Uncomment for Production
+const unsigned long thingSpeakInterval = 300000; 
 unsigned long lastThingSpeakUpdate = 0;
 const char* thingspeakServer = "http://api.thingspeak.com";
-const char* thingSpeakWriteAPIKey = "YOUR_THINGSPEAK_WRITE_API_KEY"; // Replace with your channel's Write API Key
+const char* thingSpeakWriteAPIKey = "WPFY9MS2R1GJJQGU";
 
 // --- TFT Display ---
-Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
+Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 
 // --- SD File ---
 File myFile;
@@ -83,9 +77,8 @@ const char* filename = "/flow_data.txt";
 volatile uint32_t lastUsInlet = 0;
 volatile uint32_t lastUsOutlet = 0;
 
-// MIN_GAP_US = 2400 microseconds or 2.4 ms as K = 74.905 P/L and Q_max = 100 L/min converted to L/sec and T_min = 8010.146 and MIN_GAP_US = 0.3*T_min
-
 const uint32_t MIN_GAP_US = 0; 
+
 // --- Forward declaration of functions ---
 void loadVolumesFromSD();
 float convertFlowRate(float rate_Lps);
@@ -98,17 +91,15 @@ void tryWiFiConnect();
 void checkPushButtons();
 void showSplash();
 
-// --- ThingSpeak Update Function ---
 void updateThingSpeak(float totalLitresInlet, float totalLitresOutlet) {
   HTTPClient http;
-  // Construct URL with field1 for inlet and field2 for outlet
   String url = String(thingspeakServer) + "/update?api_key=" + thingSpeakWriteAPIKey +
                "&field1=" + String(totalLitresInlet, 2) +
                "&field2=" + String(totalLitresOutlet, 2);
-  
-  http.begin(url); // Begin the HTTP request
+ 
+  http.begin(url); 
   int httpResponseCode = http.GET();
-  
+ 
   if (httpResponseCode > 0) {
     Serial.print("ThingSpeak update successful, code: ");
     Serial.println(httpResponseCode);
@@ -118,20 +109,6 @@ void updateThingSpeak(float totalLitresInlet, float totalLitresOutlet) {
   }
   http.end();
 }
-
-/*
-// --- Interrupt Service Routines for Flow Sensors ---
-void IRAM_ATTR pulseCounterInlet() {
-  pulseCountInlet++;
-  totalPulseCountInlet++;
-}
-
-void IRAM_ATTR pulseCounterOutlet() {
-  pulseCountOutlet++;
-  totalPulseCountOutlet++;
-}
-*/
-
 
 void IRAM_ATTR pulseCounterInlet() {
   uint32_t now = micros();
@@ -151,13 +128,12 @@ void IRAM_ATTR pulseCounterOutlet() {
   }
 }
 
-// --- Function to load previous volumes from SD ---
 void loadVolumesFromSD() {
   if (SD.exists(filename)) {
     myFile = SD.open(filename, FILE_READ);
     if (!myFile) {
       Serial.println("Error opening file for reading.");
-      return; // leave volumes at default values (zero)
+      return; 
     }
     String line;
     float lastInletVolume = 0.0;
@@ -193,16 +169,22 @@ void loadVolumesFromSD() {
     myFile.close();
     totalLitresInlet = lastInletVolume;
     totalLitresOutlet = lastOutletVolume;
+    Serial.print("Loaded Inlet Volume: ");
+    Serial.println(totalLitresInlet);
+    Serial.print("Loaded Outlet Volume: ");
+    Serial.println(totalLitresOutlet);
   } else {
     myFile = SD.open(filename, FILE_WRITE);
     if (myFile) {
       myFile.println("Flow Data Log Initialized");
       myFile.close();
+      Serial.println("File created and initial volumes set to zero.");
+    } else {
+      Serial.println("Failed to create log file.");
     }
   }
 }
 
-// --- WiFi Reconnection ---
 void tryWiFiConnect() {
   if (WiFi.status() != WL_CONNECTED) {
     unsigned long now = millis();
@@ -214,7 +196,6 @@ void tryWiFiConnect() {
   }
 }
 
-// --- SD Logging Function ---
 void writeToSD(float rate, float volume, unsigned long pulse, const String& status, const String& type) {
   myFile = SD.open(filename, FILE_APPEND);
   if (myFile) {
@@ -224,25 +205,34 @@ void writeToSD(float rate, float volume, unsigned long pulse, const String& stat
     myFile.print(pulse); myFile.print(", Pump Status: ");
     myFile.println(status);
     myFile.close();
+  } else {
+    Serial.println("Failed to open SD file for writing.");
   }
 }
 
-// --- TFT Display Layout ---
+// =======================================================
+// ===          MANUALLY INVERTED COLORS HERE          ===
+// =======================================================
+
 void drawUILayout() {
-  tft.fillScreen(ILI9341_BLACK);
+  // Background set to WHITE (inverted from BLACK)
+  tft.fillScreen(ST77XX_WHITE);  
   tft.setTextSize(3);
-  tft.setTextColor(ILI9341_WHITE);
+  // Main title set to BLACK (inverted from WHITE)
+  tft.setTextColor(ST77XX_BLACK); 
   tft.setCursor(2, 5);
   tft.println("FLOWMETER READOUT");
-  tft.drawLine(3, 35, 318, 35, ILI9341_WHITE);
+  tft.drawLine(3, 35, 318, 35, ST77XX_BLACK); // Line set to BLACK
   tft.setTextSize(3);
-  tft.setTextColor(ILI9341_CYAN);
+  // Inlet/Outlet set to RED (inverted from CYAN)
+  tft.setTextColor(ST77XX_RED); 
   tft.setCursor(5, 45);
   tft.println("INLET");
   tft.setCursor(164, 45);
   tft.println("OUTLET");
   tft.setTextSize(2);
-  tft.setTextColor(ILI9341_YELLOW);
+  // Labels set to BLUE (inverted from YELLOW)
+  tft.setTextColor(ST77XX_BLUE); 
   tft.setCursor(5, 80);
   tft.println("CURRENT FLOW");
   tft.setCursor(5, 162);
@@ -251,33 +241,39 @@ void drawUILayout() {
   tft.println("CURRENT FLOW");
   tft.setCursor(164, 162);
   tft.println("TOTAL FLOW");
-  tft.drawRect(3, 75, 153, 160, ILI9341_WHITE);
-  tft.drawRect(162, 75, 153, 160, ILI9341_WHITE);
+  // Rectangles set to BLACK (inverted from WHITE)
+  tft.drawRect(3, 75, 153, 160, ST77XX_BLACK);
+  tft.drawRect(162, 75, 153, 160, ST77XX_BLACK);
 }
 
-// --- Convert Flow Rates According to Mode ---
 float convertFlowRate(float rate_Lps) {
-  if (currentMode == LPS) return rate_Lps;
-  else if (currentMode == LPM) return rate_Lps * 60.0;
-  else if (currentMode == LPH) return rate_Lps * 3600.0;
-  return rate_Lps;
+  if (currentMode == LPS)
+    return rate_Lps;
+  else if (currentMode == LPM)
+    return rate_Lps * 60.0;
+  else if (currentMode == LPH)
+    return rate_Lps * 3600.0;
+  return rate_Lps; 
 }
 
 String getUnitLabel() {
-  if (currentMode == LPS) return "L/sec";
-  else if (currentMode == LPH) return "L/hour";
-  else return "L/min";
+  if (currentMode == LPS)
+    return "L/sec";
+  else if (currentMode == LPH)
+    return "L/hour";
+  else
+    return "L/min";
 }
 
-// --- TFT Dynamic Update ---
 void updateDynamicFields(float currentFlowInlet, float totalFlowInlet,
                          float currentFlowOutlet, float totalFlowOutlet) {
   String unitLabel = getUnitLabel();
-
-  tft.fillRect(5, 118, 150, 20, ILI9341_BLACK);
-  tft.fillRect(5, 200, 150, 20, ILI9341_BLACK);
+  // FillRect set to WHITE (inverted from BLACK)
+  tft.fillRect(5, 118, 150, 20, ST77XX_WHITE);
+  tft.fillRect(5, 200, 150, 20, ST77XX_WHITE);
   tft.setTextSize(2);
-  tft.setTextColor(ILI9341_WHITE);
+  // Data values set to BLACK (inverted from WHITE)
+  tft.setTextColor(ST77XX_BLACK); 
   tft.setCursor(5, 118);
   tft.print(currentFlowInlet, 1);
   tft.print(" ");
@@ -285,9 +281,10 @@ void updateDynamicFields(float currentFlowInlet, float totalFlowInlet,
   tft.setCursor(5, 200);
   tft.print(totalFlowInlet, 1);
   tft.print(" L");
-
-  tft.fillRect(164, 118, 150, 20, ILI9341_BLACK);
-  tft.fillRect(164, 200, 150, 20, ILI9341_BLACK);
+ 
+  // FillRect set to WHITE (inverted from BLACK)
+  tft.fillRect(164, 118, 150, 20, ST77XX_WHITE);
+  tft.fillRect(164, 200, 150, 20, ST77XX_WHITE);
   tft.setCursor(164, 118);
   tft.print(currentFlowOutlet, 1);
   tft.print(" ");
@@ -298,98 +295,122 @@ void updateDynamicFields(float currentFlowInlet, float totalFlowInlet,
 }
 
 void showSplash(){
-  tft.fillScreen(ILI9341_BLACK);
+  // Splash screen manually inverted
+  tft.fillScreen(ST77XX_WHITE); // WHITE background
   tft.setFont(&FreeSansBoldOblique24pt7b);
-  tft.setTextColor(ILI9341_WHITE, ILI9341_BLACK);
-
+  tft.setTextColor(ST77XX_BLACK, ST77XX_WHITE); // BLACK text
   const char* msg = "HAZ LABS";
   int16_t x1, y1;
   uint16_t w, h;
   tft.getTextBounds(msg, 0, 0, &x1, &y1, &w, &h);
-
   uint16_t screenW = 320, screenH = 240;
   int16_t cx = (screenW - w)/2 - x1;
   int16_t cy = (screenH + h)/2 - y1;
-
   tft.setCursor(cx, cy);
   tft.print(msg);
   delay(2000);
   tft.setFont(NULL);
 }
 
-// --- Setup ---
+
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
 
   pinMode(TFT_CS, OUTPUT); digitalWrite(TFT_CS, HIGH);
   pinMode(SD_CS, OUTPUT); digitalWrite(SD_CS, HIGH);
-
+ 
   pinMode(SENSOR_INLET, INPUT_PULLUP);
   pinMode(SENSOR_OUTLET, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(SENSOR_INLET), pulseCounterInlet, FALLING);
   attachInterrupt(digitalPinToInterrupt(SENSOR_OUTLET), pulseCounterOutlet, FALLING);
-
+ 
   pinMode(BUTTON_MODE, INPUT_PULLUP);
-
+ 
   WiFi.mode(WIFI_STA);
   tryWiFiConnect();
-
+ 
   if (!SD.begin(SD_CS)) {
     Serial.println("SD Card initialization failed!");
   } else {
+    Serial.println("SD Card initialized.");
     loadVolumesFromSD();
   }
 
-  tft.begin();
-  tft.setRotation(3);
+  tft.init(240, 320);
+  tft.setRotation(1); // Set display rotation
+
+ 
+
   showSplash();
   drawUILayout();
 }
 
-// --- Check Push Buttons ---
 void checkPushButtons() { 
   if (digitalRead(BUTTON_MODE) == LOW) {
     if (millis() - lastDebounceMode > debounceDelay) {
-      if (currentMode == LPS) currentMode = LPM;
-      else if (currentMode == LPM) currentMode = LPH;
-      else currentMode = LPS;
+      if (currentMode == LPS)
+        currentMode = LPM;
+      else if (currentMode == LPM)
+        currentMode = LPH;
+      else
+        currentMode = LPS;
+      Serial.print("Display mode changed to: ");
+      Serial.println(getUnitLabel());
       lastDebounceMode = millis();
     }
   }
 }
 
-// --- Main Loop ---
 void loop() {
   currentMillis = millis();
   tryWiFiConnect();
   checkPushButtons();
-
+ 
   if (currentMillis - previousMillis >= interval) {
     pulse1SecInlet = pulseCountInlet;
     pulseCountInlet = 0;
     flowRateInlet = ((1000.0 / interval) * pulse1SecInlet) / inletCalibrationFactor;
     float displayFlowInlet = convertFlowRate(flowRateInlet);
-    totalLitresInlet += flowRateInlet;
+    flowLitresInlet = flowRateInlet;
+    totalLitresInlet += flowLitresInlet;
     String pumpStatusInlet = (flowRateInlet > 0.0) ? "ON" : "OFF";
-
+   
     pulse1SecOutlet = pulseCountOutlet;
     pulseCountOutlet = 0;
     flowRateOutlet = ((1000.0 / interval) * pulse1SecOutlet) / outletCalibrationFactor;
     float displayFlowOutlet = convertFlowRate(flowRateOutlet);
-    totalLitresOutlet += flowRateOutlet;
+    flowLitresOutlet = flowRateOutlet;
+    totalLitresOutlet += flowLitresOutlet;
     String pumpStatusOutlet = (flowRateOutlet > 0.0) ? "ON" : "OFF";
-
+   
     previousMillis = currentMillis;
-
+   
+    Serial.println("=== FLOW DATA ===");
+    Serial.print("Inlet  - Flow: "); Serial.print(flowRateInlet, 2);
+    Serial.print(" L/sec, Display Flow: "); Serial.print(displayFlowInlet, 2);
+    Serial.print(" "); Serial.print(getUnitLabel());
+    Serial.print(", Total: "); Serial.print(totalLitresInlet, 2);
+    Serial.print(" L, Pulses: "); Serial.print(totalPulseCountInlet);
+    Serial.print(", Pump Status: "); Serial.println(pumpStatusInlet);
+   
+    Serial.print("Outlet - Flow: "); Serial.print(flowRateOutlet, 2);
+    Serial.print(" L/sec, Display Flow: "); Serial.print(displayFlowOutlet, 2);
+    Serial.print(" "); Serial.print(getUnitLabel());
+    Serial.print(", Total: "); Serial.print(totalLitresOutlet, 2);
+    Serial.print(" L, Pulses: "); Serial.print(totalPulseCountOutlet);
+    Serial.print(", Pump Status: "); Serial.println(pumpStatusOutlet);
+    Serial.println("=================\n");
+   
     if (flowRateInlet > 0.0 || lastPumpStatusInlet == "ON") {
       writeToSD(flowRateInlet, totalLitresInlet, totalPulseCountInlet, pumpStatusInlet, "Inlet");
       lastPumpStatusInlet = pumpStatusInlet;
     }
-
+   
     if (flowRateOutlet > 0.0 || lastPumpStatusOutlet == "ON") {
       writeToSD(flowRateOutlet, totalLitresOutlet, totalPulseCountOutlet, pumpStatusOutlet, "Outlet");
-      lastPumpStatusOutlet = pumpStatusOutlet;
+      lastPumpStatusOutlet = "ON";
     }
 
     if (currentMillis - lastThingSpeakUpdate >= thingSpeakInterval) {
@@ -397,6 +418,7 @@ void loop() {
       lastThingSpeakUpdate = currentMillis;
     }
 
+    
     updateDynamicFields(displayFlowInlet, totalLitresInlet,
                         displayFlowOutlet, totalLitresOutlet);
   }
